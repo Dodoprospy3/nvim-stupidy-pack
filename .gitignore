@@ -1,0 +1,9 @@
+# OS / editor junk
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Local tooling
+.luarc.json
+.lazy.lua
