@@ -253,6 +253,11 @@ function M.open()
     -- Transparent float background: use Normal (which the theme sets to a
     -- transparent bg) instead of NormalFloat's opaque background.
     vim.wo[win].winhighlight = "Normal:Normal"
+    -- Actually see-through: without winblend the float's (space) cells mask
+    -- the buffer text behind them even with a transparent bg. winblend lets
+    -- empty cells reveal the text underneath while the donut glyphs stay
+    -- fully drawn on top.
+    vim.wo[win].winblend = 100
 
     -- Close from normal mode with <Esc> or q.
     vim.keymap.set("n", "<Esc>", function()
