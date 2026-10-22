@@ -17,6 +17,8 @@ local state = {
     running = false,
     angle_a = 0,
     angle_b = 0,
+    ex = 0,  -- cached max projected extent in x (see compute_extents)
+    ey = 0,  -- cached max projected extent in y
 }
 
 -- Donut rendering constants.
@@ -30,6 +32,46 @@ local phi_spacing = 0.02
 
 local chars = ".,-~:;!#$@"   -- luminance ramp, darkest to brightest
 
+-- Precompute the largest projected extent of the donut (max ooz*|x| and
+-- ooz*|y|) for the current orientation. The torus is symmetric, so this is
+-- essentially rotation-invariant; we compute it once and reuse it to scale
+-- the projection so every part of the donut fits inside the window.
+local function compute_extents()
+    local maxx, maxy = 0, 0
+    local a = state.angle_a
+    local b = state.angle_b
+    local sin_a, cos_a = math.sin(a), math.cos(a)
+    local sin_b, cos_b = math.sin(b), math.cos(b)
+
+    local theta = 0
+    while theta < 2 * math.pi do
+        local sin_theta, cos_theta = math.sin(theta), math.cos(theta)
+        local phi = 0
+        while phi < 2 * math.pi do
+            local sin_phi, cos_phi = math.sin(phi), math.cos(phi)
+            local circle_x = R2 + R1 * cos_theta
+            local circle_y = R1 * sin_theta
+            local x = circle_x * (cos_b * cos_phi + sin_a * sin_b * sin_phi)
+                - circle_y * cos_a * sin_b
+            local y = circle_x * (sin_b * cos_phi - sin_a * cos_b * sin_phi)
+                + circle_y * cos_a * cos_b
+            local z = K2 + cos_a * circle_x * sin_phi + circle_y * sin_a
+            local ooz = 1 / z
+            local ex = ooz * math.abs(x)
+            local ey = ooz * math.abs(y)
+            if ex > maxx then maxx = ex end
+            if ey > maxy then maxy = ey end
+            phi = phi + phi_spacing
+        end
+        theta = theta + theta_spacing
+    end
+
+    -- Guard against a degenerate result.
+    if maxx <= 0 then maxx = 1 end
+    if maxy <= 0 then maxy = 1 end
+    return maxx, maxy
+end
+
 local function render()
     local win = state.win
     if not win or not vim.api.nvim_win_is_valid(win) then
@@ -42,7 +84,17 @@ local function render()
         return
     end
 
-    K1 = width * K2 * 3 / (8 * (R1 + R2))
+    -- Scale the projection so the whole donut fits inside the window:
+    --   horizontal: K1 * ex        <= width  / 2
+    --   vertical:   K1 * ey * 0.5  <= height / 2   (0.5 = tall-cell aspect)
+    local ex, ey = state.ex, state.ey
+    if ex <= 0 or ey <= 0 then
+        ex, ey = compute_extents()
+        state.ex, state.ey = ex, ey
+    end
+    local k1_w = (width * 0.5) / ex
+    local k1_h = (height * 0.5) / (ey * 0.5)
+    K1 = math.min(k1_w, k1_h)
 
     local output = {}
     local z_buffer = {}
@@ -155,7 +207,7 @@ local function float_opts()
         row = math.floor((avail_h - box_h) / 2),
         col = math.floor((avail_w - box_w) / 2),
         style = "minimal",
-        border = "rounded",
+        border = "none",
         focusable = true,
     }
 end
@@ -182,6 +234,10 @@ function M.open()
     state.prev_win = prev
     state.running = true
 
+    -- Measure the donut's projected extent once so render() can scale it to
+    -- always fit fully inside the window (nothing clipped).
+    state.ex, state.ey = compute_extents()
+
     -- Scratch buffer: never prompts to save, wiped when closed.
     vim.bo[buf].buftype = "nofile"
     vim.bo[buf].bufhidden = "wipe"
@@ -194,6 +250,9 @@ function M.open()
     vim.wo[win].signcolumn = "no"
     vim.wo[win].cursorline = false
     vim.wo[win].wrap = false
+    -- Transparent float background: use Normal (which the theme sets to a
+    -- transparent bg) instead of NormalFloat's opaque background.
+    vim.wo[win].winhighlight = "Normal:Normal"
 
     -- Close from normal mode with <Esc> or q.
     vim.keymap.set("n", "<Esc>", function()
