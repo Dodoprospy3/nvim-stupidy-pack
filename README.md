@@ -37,9 +37,11 @@ plugins required, Lua-only integration.
 All three clean up their processes and timers when their window closes, when
 their buffer is wiped, and when Neovim exits.
 
-> The donut's float is transparent by default: it reuses the `Normal`
-> highlight, so it matches whatever background your colorscheme sets there
-> (transparent if your theme makes `Normal` transparent).
+> The donut's float is **actually see-through**: it reuses the `Normal`
+> highlight and sets `winblend = 100`, so text in the buffer behind the
+> donut shows through the empty cells — only the donut glyphs are drawn
+> on top. (A transparent background alone isn't enough: Neovim floats
+> normally mask the buffer text underneath; `winblend` is what reveals it.)
 
 ## Requirements
 
