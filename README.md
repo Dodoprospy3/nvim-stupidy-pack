@@ -30,12 +30,16 @@ plugins required, Lua-only integration.
 
 | Feature | What it is | Where it runs |
 |---------|------------|---------------|
-| 🍩 **Donut** | Continuously spinning 3D ASCII donut, rendered by a pure-Lua torus projection on a libuv timer (never blocks editing) | Floating window |
+| 🍩 **Donut** | Continuously spinning 3D ASCII donut, rendered by a pure-Lua torus projection on a libuv timer (never blocks editing). Draws in a **transparent, borderless** float and auto-scales so the whole donut stays visible at any window size | Floating window |
 | 🐠 **Aquarium** | Animated ASCII aquarium via the system [`asciiquarium`](https://robobunny.com/projects/asciiquarium/html) program | Floating window |
 | 💀 **DOOM** | The actual DOOM game via the [`doomretro`](https://doomretro.com) source port | Vertical terminal split |
 
 All three clean up their processes and timers when their window closes, when
 their buffer is wiped, and when Neovim exits.
+
+> The donut's float is transparent by default: it reuses the `Normal`
+> highlight, so it matches whatever background your colorscheme sets there
+> (transparent if your theme makes `Normal` transparent).
 
 ## Requirements
 
